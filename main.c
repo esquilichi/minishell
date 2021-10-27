@@ -78,11 +78,11 @@ int main(int argc, char const *argv[]){
 			//Restablecemos las señales a las que están por defecto
 			if (strcmp(line->commands[0].argv[0],CDCONST) == 0){ // Miramos si el comando que queremos es cd
 				my_cd(line); // Aquí no hacemos hijo o no cambiamos de dir
-			}if (strcmp(line->commands[0].argv[0],EXIT) == 0){ // Salimos de la shell
+			}else if (strcmp(line->commands[0].argv[0],EXIT) == 0){ // Salimos de la shell
 				exit(0);
-			}if (strcmp(line->commands[0].argv[0],JOBSCONST)){ // JOBS con fg y bg
+			}else if (strcmp(line->commands[0].argv[0],JOBSCONST) == 0){ // JOBS con fg y bg
 
-			}if (strcmp(line->commands[0].argv[0],G_USAGE) == 0){ // Futuro Global Usage
+			}else if (strcmp(line->commands[0].argv[0],G_USAGE) == 0){ // Futuro Global Usage
 
 			}else{
 				//Creamos el hijo para ejecutar el comando
@@ -103,11 +103,12 @@ int main(int argc, char const *argv[]){
 					}else{
 						//printf("Mi pid es == %d\n",pid);
 						fprintf(stderr,"No se encuentra el comando %s\n",line->commands[0].argv[0]);
-						exit(0);
+						exit(1);
 					}
 				}else{ //Padre 
 					wait(&exit_status);
 					if(WIFEXITED(exit_status) != 0){
+						printf("DEBUG status: %d\n",exit_status);
 						if (WEXITSTATUS(exit_status) != 0){
 							fprintf(stdout,"El comando ha tenido un código de estado erróneo\n");
 						}
@@ -159,7 +160,7 @@ char * make_prompt(uid_t uid){
 void my_cd(tline *line){
 	char* dir;
 	char pwd[512];
-
+	int dir_status = -1;
 	if (line->commands[0].argc > 2){
 		fprintf(stderr, "Más de dos argumentos\n");
 	}
@@ -171,9 +172,11 @@ void my_cd(tline *line){
 		} 
 	}else{
 		dir = line->commands[0].argv[1];
+		printf("DEBUG: %s\n",dir);
 	}
 
-	if (chdir(dir) != 0){ // Si la función devuelve algo que no es 0, falló
+	dir_status = chdir(dir);
+	if (dir_status){ // Si la función devuelve algo que no es 0, falló
 		fprintf(stderr,"No existe el directorio %s\n", dir);
 	}
 }
