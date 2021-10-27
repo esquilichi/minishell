@@ -70,7 +70,7 @@ uid_t uid;
 int check_command(char * filename);
 void my_cd(tline *line);
 void make_prompt();
-void print_promt();
+void print_promt(int exit_code);
 
 /*
  _________
@@ -88,7 +88,7 @@ int main(int argc, char const *argv[]){
 	pid_t pid;
 	tline *line; // Struct de parser.h
 	char *buffer = (char *) malloc(1024*(sizeof(char))); // Memoria dinamica porque why not
-	print_promt();
+	print_promt(0);
 	int exit_status = 0; //Se usa para comprobar salida de estado del hijo
 
 
@@ -175,7 +175,7 @@ int main(int argc, char const *argv[]){
 		}else if (line->ncommands == 2){ //Tenemos comandos separados por | (pipes)
 			printf("Tengo dos comandos jeje\n");
 		}
-		print_promt();
+		print_promt(exit_status);
 	}
 
 
@@ -222,7 +222,7 @@ void my_cd(tline *line){
 	}
 }
 
-void print_promt(){
+void print_promt(int exit_code){
 	char cwd[256];
 	getcwd(&cwd[0], sizeof(cwd));
 	cyan();
@@ -237,6 +237,12 @@ void print_promt(){
 	printf("%s", cwd);
 	reset();
 	printf(" ");
+		if (exit_code != 0)
+	{
+		red();
+		printf("status: %d ", exit_code);
+		reset();
+	}
 	if (uid != 0)
 		printf("$");
 	else{
@@ -246,6 +252,7 @@ void print_promt(){
 	}
 			
 	printf(" ");
+
 }
 
 
