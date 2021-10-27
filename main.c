@@ -88,7 +88,45 @@ int main(int argc, char const *argv[]){
 				//Creamos el hijo para ejecutar el comando
 
 				pid = fork();
-				if (pid < 0){
+				if(pid<0){
+					pid = -1; //En caso de error
+				}
+				switch (pid) {
+					case 0:
+						signal(SIGINT,  SIG_DFL);
+						signal(SIGKILL, SIG_DFL);
+						signal(SIGTSTP, SIG_DFL);
+						char *command = line->commands[0].filename; // Path absoluto
+						//printf("%s\n", command); Debug Filename 
+						if (check_command(command)){
+							execvp(command, line->commands[0].argv);
+							fprintf(stderr,"No se ha podido ejecutar el comando %s\n",command);
+						}else{
+							//printf("Mi pid es == %d\n",pid);
+							fprintf(stderr,"No se encuentra el comando %s\n",line->commands[0].argv[0]);
+							exit(1);
+						}
+					break;
+						
+					case -1:
+						fprintf(stderr,"Falló el fork");
+						exit(1);
+					break;
+
+					default:
+						wait(&exit_status);
+						if(WIFEXITED(exit_status) != 0){
+							//printf("DEBUG status: %d\n",exit_status);
+							if (WEXITSTATUS(exit_status) != 0){
+								fprintf(stdout,"El comando ha tenido un código de estado erróneo\n");
+							}
+						}
+						signal(SIGINT,  SIG_IGN); //Ignorar señales en Padre
+						signal(SIGQUIT, SIG_IGN);
+						signal(SIGTSTP, SIG_IGN);
+					break;
+				}
+				/* if (pid < 0){
 					fprintf(stderr,"Falló el fork");
 					exit(1);
 				}else if(pid == 0){ //Hijo
@@ -116,7 +154,7 @@ int main(int argc, char const *argv[]){
 					signal(SIGINT,  SIG_IGN); //Ignorar señales en Padre
 					signal(SIGQUIT, SIG_IGN);
 					signal(SIGTSTP, SIG_IGN);
-				}
+				} */
 			}
 		}else{ //Tenemos comandos separados por | (pipes)
 			/* code */
@@ -172,7 +210,7 @@ void my_cd(tline *line){
 		} 
 	}else{
 		dir = line->commands[0].argv[1];
-		printf("DEBUG: %s\n",dir);
+		//printf("DEBUG: %s\n",dir);
 	}
 
 	dir_status = chdir(dir);
