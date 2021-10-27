@@ -1,3 +1,18 @@
+/*
+ ____________________________________
+/ Hecho por Clara Contreras e Ismael \
+\ Esquilichi                         /
+ ------------------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+*/
+
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,15 +21,18 @@
 #include "parser.h"
 #include "colors.h"
 
+
+
 /*
-Cosas a hacer:
-Permitir ejecución de comando con background &
-Implementar Jobs con array de procesos
-Manejar redirecciones
-
+ _________
+< Defines >
+ ---------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
 */
-
-// Defines
 #define True 1
 #define False 0
 #define CDCONST "cd"
@@ -22,22 +40,49 @@ Manejar redirecciones
 #define JOBSCONST "jobs"
 #define G_USAGE "globalusage"
 
-
-// Variables globales
+/*
+ ____________________
+< Variables Globales >
+ --------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+*/
 char *user;
 char hostname[64];
 int jobs_buffer[32][32];
 int num_commands = 0;
 uid_t uid;
 
-// Definición de funciones
+/*
+ __________________________
+< Definición de funciones >
+ --------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+*/
+
 int check_command(char * filename);
 void my_cd(tline *line);
 void make_prompt();
 void print_promt();
 
+/*
+ _________
+< Código >
+ ---------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+*/
 
-//Shell
 int main(int argc, char const *argv[]){
 	make_prompt();
 	pid_t pid;
