@@ -13,6 +13,14 @@ Manejar redirecciones
 
 */
 
+//Colores ANSI
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 // Defines
 #define True 1
@@ -24,27 +32,28 @@ Manejar redirecciones
 
 
 // Variables globales
+char *user;
+char hostname[64];
 int jobs_buffer[32][32];
 int num_commands = 0;
-
+uid_t uid;
 
 // Definición de funciones
 int check_command(char * filename);
 void my_cd(tline *line);
-char *make_prompt(uid_t uid);
+void make_prompt();
+void print_promt();
 
 
 //Shell
 int main(int argc, char const *argv[]){
-
-	uid_t uid = getuid();
-	const char *prompt = make_prompt(uid); // Movida para tener prompt con whoami
+	make_prompt();
 	pid_t pid;
 	tline *line; // Struct de parser.h
 	char *buffer = (char *) malloc(1024*(sizeof(char))); // Memoria dinamica porque why not
-	printf("%s", prompt);
+	print_promt();
 	int exit_status = 0; //Se usa para comprobar salida de estado del hijo
-	
+
 
 	signal(SIGINT,  SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
 	signal(SIGQUIT, SIG_IGN);
@@ -55,7 +64,6 @@ int main(int argc, char const *argv[]){
 		signal(SIGINT,  SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
 		signal(SIGQUIT, SIG_IGN);
 		signal(SIGTSTP, SIG_IGN);
-
 
 		line = tokenize(buffer);
 		if (line == NULL){
@@ -97,7 +105,7 @@ int main(int argc, char const *argv[]){
 						signal(SIGKILL, SIG_DFL);
 						signal(SIGTSTP, SIG_DFL);
 						char *command = line->commands[0].filename; // Path absoluto
-						//printf("%s\n", command); Debug Filename 
+						//printf("%s\n", command); Debug Filename
 						if (check_command(command)){
 							execvp(command, line->commands[0].argv);
 							fprintf(stderr,"No se ha podido ejecutar el comando %s\n",command);
@@ -107,7 +115,7 @@ int main(int argc, char const *argv[]){
 							exit(1);
 						}
 					break;
-						
+
 					case -1:
 						fprintf(stderr,"Falló el fork");
 						exit(1);
@@ -126,42 +134,13 @@ int main(int argc, char const *argv[]){
 						signal(SIGTSTP, SIG_IGN);
 					break;
 				}
-				/* if (pid < 0){
-					fprintf(stderr,"Falló el fork");
-					exit(1);
-				}else if(pid == 0){ //Hijo
-					signal(SIGINT,  SIG_DFL);
-					signal(SIGKILL, SIG_DFL);
-					signal(SIGTSTP, SIG_DFL);
-					char *command = line->commands[0].filename; // Path absoluto
-					//printf("%s\n", command); Debug Filename 
-					if (check_command(command)){
-						execvp(command, line->commands[0].argv);
-						fprintf(stderr,"No se ha podido ejecutar el comando %s\n",command);
-					}else{
-						//printf("Mi pid es == %d\n",pid);
-						fprintf(stderr,"No se encuentra el comando %s\n",line->commands[0].argv[0]);
-						exit(1);
-					}
-				}else{ //Padre 
-					wait(&exit_status);
-					if(WIFEXITED(exit_status) != 0){
-						printf("DEBUG status: %d\n",exit_status);
-						if (WEXITSTATUS(exit_status) != 0){
-							fprintf(stdout,"El comando ha tenido un código de estado erróneo\n");
-						}
-					}
-					signal(SIGINT,  SIG_IGN); //Ignorar señales en Padre
-					signal(SIGQUIT, SIG_IGN);
-					signal(SIGTSTP, SIG_IGN);
-				} */
 			}
-		}else{ //Tenemos comandos separados por | (pipes)
-			/* code */
+		}else if (line->ncommands == 2){ //Tenemos comandos separados por | (pipes)
+			printf("Tengo dos comandos jeje\n");
 		}
-		printf("%s", prompt);
+		print_promt();
 	}
-	
+
 
 	free(buffer);
 	return 0;
@@ -175,29 +154,16 @@ int check_command(char *filename){
 	}
 }
 
-char * make_prompt(uid_t uid){
-	FILE *fp;
-	char *path = (char *) malloc(128* sizeof(char));
-
-	fp = popen("whoami", "r");
-	if (fp == NULL){
-		fprintf(stderr, "Error al ejecutar whoami");
-		exit(1);
-	}
-
-	fgets(path, sizeof(path), fp);
-	path[strcspn(path, "\n")] = 0;
-	pclose(fp);
-	if (uid == 0)
-		strcat(path,"# ");
-	else
-		strcat(path,"$ ");
-	return path;
+void make_prompt(){
+	char l_hostname[64];
+	uid = getuid();
+	gethostname(l_hostname, sizeof(l_hostname));
+	strcpy(hostname, l_hostname);
+	user = getenv("USER");
 }
 
 void my_cd(tline *line){
 	char* dir;
-	char pwd[512];
 	int dir_status = -1;
 	if (line->commands[0].argc > 2){
 		fprintf(stderr, "Más de dos argumentos\n");
@@ -207,7 +173,7 @@ void my_cd(tline *line){
 		dir = getenv("HOME");
 		if (dir == NULL){
 			fprintf(stderr, "$HOME no tiene un valor\n");
-		} 
+		}
 	}else{
 		dir = line->commands[0].argv[1];
 		//printf("DEBUG: %s\n",dir);
@@ -219,5 +185,20 @@ void my_cd(tline *line){
 	}
 }
 
+void print_promt(){
+	char cwd[256];
+	getcwd(&cwd[0], sizeof(cwd));
+	printf(ANSI_COLOR_CYAN"%s"ANSI_COLOR_RESET, user);
+	printf("@");
+	printf(ANSI_COLOR_CYAN"%s"ANSI_COLOR_RESET, hostname);
+	printf(" ");
+	printf(ANSI_COLOR_MAGENTA"%s"ANSI_COLOR_RESET, cwd);
+	printf(" ");
+	if (uid != 0)
+		printf("$");
+	else
+		printf(ANSI_COLOR_RED"#"ANSI_COLOR_RESET);	
+	printf(" ");
+}
 
 
