@@ -20,7 +20,7 @@
 #include <signal.h>
 #include "parser.h"
 #include "colors.h"
-
+#include <fcntl.h>
 
 
 /*
@@ -71,6 +71,7 @@ int check_command(char * filename);
 void my_cd(tline *line);
 void make_prompt();
 void print_promt(int exit_code);
+void change_redirections(tline *line, int casito);
 
 /*
  _________
@@ -107,13 +108,13 @@ int main(int argc, char const *argv[]){
 			continue;
 		}
 		if (line->redirect_input != NULL){
-			/* code */
+			//printf("%s\n", line->redirect_input);
 		}
 		if (line->redirect_output != NULL){
-			/* code */
+			//change_redirections(line);
 		}
 		if (line->redirect_error != NULL){
-			/* code */
+			printf("%s\n", line->redirect_error);
 		}
 		if (line->background){ // En el parser.h está definido como int/bool
 			/* code */
@@ -141,6 +142,10 @@ int main(int argc, char const *argv[]){
 						signal(SIGINT,  SIG_DFL);
 						signal(SIGKILL, SIG_DFL);
 						signal(SIGTSTP, SIG_DFL);
+						if (line->redirect_output != NULL)
+							change_redirections(line, 1);
+						if (line->redirect_input != NULL)
+							change_redirections(line, 0);
 						char *command = line->commands[0].filename; // Path absoluto
 						//printf("%s\n", command); Debug Filename
 						if (check_command(command)){
@@ -254,5 +259,30 @@ void print_promt(int exit_code){
 	printf(" ");
 
 }
+
+
+
+void change_redirections(tline *line, int casito){
+	int file;
+	switch (casito){
+		case 0:
+			file = open(line->redirect_input, O_RDONLY);
+			dup2(file, STDIN_FILENO);
+			break;
+		case 1:
+			file = open(line->redirect_output, O_RDWR | O_CREAT);
+			dup2(file, STDOUT_FILENO);
+			break;
+		case 2:
+			file = open (line->redirect_error, O_RDWR | O_CREAT);
+			dup2(file, STDERR_FILENO);
+			break;
+		}
+
+}
+
+
+
+
 
 

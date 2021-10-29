@@ -1,4 +1,8 @@
 main
+
+# Lecture files
+*.txt
+
 # Prerequisites
 *.d
 
