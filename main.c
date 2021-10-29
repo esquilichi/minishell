@@ -18,9 +18,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+#include <fcntl.h>
 #include "parser.h"
 #include "colors.h"
-#include <fcntl.h>
+
 
 
 /*
@@ -146,6 +147,8 @@ int main(int argc, char const *argv[]){
 							change_redirections(line, 1);
 						if (line->redirect_input != NULL)
 							change_redirections(line, 0);
+						if (line->redirect_error != NULL)
+							change_redirections(line, 2);
 						char *command = line->commands[0].filename; // Path absoluto
 						//printf("%s\n", command); Debug Filename
 						if (check_command(command)){
@@ -270,11 +273,11 @@ void change_redirections(tline *line, int casito){
 			dup2(file, STDIN_FILENO);
 			break;
 		case 1:
-			file = open(line->redirect_output, O_RDWR | O_CREAT);
+			file = open(line->redirect_output, O_RDWR | O_CREAT, 0664);
 			dup2(file, STDOUT_FILENO);
 			break;
 		case 2:
-			file = open (line->redirect_error, O_RDWR | O_CREAT);
+			file = open(line->redirect_error, O_RDWR | O_CREAT, 0664);
 			dup2(file, STDERR_FILENO);
 			break;
 		}
