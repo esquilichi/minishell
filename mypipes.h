@@ -12,3 +12,4 @@ int lastPipe(int **matrix, tline* line, int nPipes);
 int mediumPipe(int **matrix, tline* line, int nPipes, int i);
 int crearPipe(int **matrix, int statusPipe, int nPipes);
 void matrixFree(int **matrix, int n);
+void change_redirections(tline *line, int casito);

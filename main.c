@@ -73,7 +73,6 @@ void my_cd(tline *line);
 void make_prompt();
 void print_promt(int exit_code);
 // void change_redirections(tline *line, int casito);
-void change_redirections(tline *line, int casito);
 
 /*
  _________
@@ -180,8 +179,6 @@ int main(int argc, char const *argv[]){
 		}
 		print_promt(exit_status);
 	}
-
-
 	free(buffer);
 	return 0;
 }
@@ -257,26 +254,7 @@ void print_promt(int exit_code){
 	printf(" ");
 
 }
-void change_redirections(tline *line, int casito){
-	int file;
-	switch (casito){
-		case 0:
-			// Redirección de entrada
-			file = open(line->redirect_input, O_RDONLY);
-			dup2(file, STDIN_FILENO);
-			break;
-		case 1:
-			// Redirección de salida
-			file = open(line->redirect_output, O_RDWR | O_CREAT, 0664);
-			dup2(file, STDOUT_FILENO);
-			break;
-		case 2:
-			// Redirección de error
-			file = open(line->redirect_error, O_RDWR | O_CREAT, 0664);
-			dup2(file, STDERR_FILENO);
-			break;
-		}
-}
+
 
 
 
