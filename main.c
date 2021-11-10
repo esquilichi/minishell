@@ -102,20 +102,7 @@ int main(int argc, char const *argv[]){
 		if (line == NULL){
 			continue;
 		}
-		if (line->redirect_input != NULL){
-			//printf("%s\n", line->redirect_input);
-		}
-		if (line->redirect_output != NULL){
-			//change_redirections(line);
-		}
-		if (line->redirect_error != NULL){
-			printf("%s\n", line->redirect_error);
-		}
-		if (line->background){ // En el parser.h está definido como int/bool
-			/* code */
-		}
 		if(line->ncommands == 1){
-
 			//Restablecemos las señales a las que están por defecto
 			if (strcmp(line->commands[0].argv[0],CDCONST) == 0){ // Miramos si el comando que queremos es cd
 				my_cd(line); // Aquí no hacemos hijo o no cambiamos de dir
