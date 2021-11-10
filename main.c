@@ -21,7 +21,7 @@
 #include <fcntl.h>
 #include "parser.h"
 #include "colors.h"
-
+#include "mypipes.h"
 
 
 /*
@@ -219,9 +219,9 @@ int executePipes(tline *line){
 	}
 
 	for (int i = 0; i < line->ncommands; ++i){
-		printf("%s\n",line->commands[i].filename);
+		/* printf("%s\n",line->commands[i].filename); */
 		if (line->commands[i].filename == NULL){ // Comando no válido
-			fprintf(stderr,"No se encuentra el comando %s\n",line->commands[0].argv[0]);
+			fprintf(stderr,"No se encuentra el comando %s\n",line->commands[i].argv[0]);
 			matrixFree(pipes_matrix, nPipes);
 			return ERROR;
 		}
@@ -248,6 +248,7 @@ int executePipes(tline *line){
 				close(pipes_matrix[0][0]);
 				dup2(pipes_matrix[0][1],STDOUT_FILENO);
 				close(pipes_matrix[0][1]);
+
 			}
 			else if(i == nPipes){ // Último comando
 					for (int k = 0; k < nPipes - 1; k++) {

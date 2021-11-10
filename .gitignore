@@ -54,4 +54,5 @@ main
 modules.order
 Module.symvers
 Mkfile.old
-dkms.conf
+dkms
+.DS_Store
