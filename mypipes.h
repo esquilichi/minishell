@@ -6,6 +6,9 @@
 #include <fcntl.h>
 #include "parser.h"
 
-int fistPipe(int **matrix, tline* line, int nPipes);
+int executePipes(int **matrix, tline *line);
+int firstPipe(int **matrix, tline* line, int nPipes);
 int lastPipe(int **matrix, tline* line, int nPipes);
-int mediumPipe(int **matrix, tline* line, int nPipes);
+int mediumPipe(int **matrix, tline* line, int nPipes, int i);
+int crearPipe(int **matrix, int statusPipe, int nPipes);
+void matrixFree(int **matrix, int n);

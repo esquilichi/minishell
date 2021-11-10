@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
-#include "parser.h"
 #include "colors.h"
 #include "mypipes.h"
 
@@ -70,12 +69,11 @@ int **pipes_matrix;
 */
 
 int check_command(char * filename);
-int executePipes(tline *line);
 void my_cd(tline *line);
 void make_prompt();
 void print_promt(int exit_code);
+// void change_redirections(tline *line, int casito);
 void change_redirections(tline *line, int casito);
-void matrixFree(int **matrix, int n);
 
 /*
  _________
@@ -95,12 +93,6 @@ int main(int argc, char const *argv[]){
 	char *buffer = (char *) malloc(1024*(sizeof(char))); // Memoria dinamica porque why not
 	print_promt(0);
 	int exit_status = 0; //Se usa para comprobar salida de estado del hijo
-
-
-	signal(SIGINT,  SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
-	signal(SIGQUIT, SIG_IGN);
-	signal(SIGTSTP, SIG_IGN);
-
 
 	while(fgets(buffer, 1024, stdin)){
 		signal(SIGINT,  SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
@@ -184,7 +176,7 @@ int main(int argc, char const *argv[]){
 				}
 			}
 		}else if (line->ncommands >= 2){ //executePipes
-			executePipes(line);
+			executePipes(pipes_matrix, line);
 		}
 		print_promt(exit_status);
 	}
@@ -192,115 +184,6 @@ int main(int argc, char const *argv[]){
 
 	free(buffer);
 	return 0;
-}
-
-int executePipes(tline *line){
-	int nPipes = line->ncommands - 1;
-	pid_t pid;
-	int statusPipe = 0;
-	int dupStatus = 0;
-	int execStatus = 0;
-	int status = 0;
-	pipes_matrix = (int **) malloc(nPipes * sizeof(int *));
-
-	/* ----- Reservar memoria para la matriz ----- */
-	for (int i = 0; i < nPipes; ++i){
-		pipes_matrix[i] = malloc(2 * sizeof(int));
-	}
-
-	/* Crear pipes para los n comandos a ejecutar */
-	for (int i = 0; i < nPipes; ++i){
-		statusPipe = pipe(pipes_matrix[i]);
-		if (statusPipe < 0){
-			perror("No se ha podido generar de forma correcta el pipe\n");
-			matrixFree(pipes_matrix, nPipes);
-			return ERROR;
-		}
-	}
-
-	for (int i = 0; i < line->ncommands; ++i){
-		/* printf("%s\n",line->commands[i].filename); */
-		if (line->commands[i].filename == NULL){ // Comando no válido
-			fprintf(stderr,"No se encuentra el comando %s\n",line->commands[i].argv[0]);
-			matrixFree(pipes_matrix, nPipes);
-			return ERROR;
-		}
-		pid = fork();
-		if(pid == 0){ // Hijo
-			// Ejecutar comando y pasar output al input del pipe
-			signal(SIGINT,  SIG_DFL);
-			signal(SIGKILL, SIG_DFL);
-			signal(SIGTSTP, SIG_DFL);
-			/* Tenemos varios casos
-				1. Primer Comando
-				2. Último comando (stdout a pantalla)
-				3. Comando intermedio */
-			if (i == 0){ // Primer Comando
-				if(line->redirect_input != NULL){ // input redirect
-					change_redirections(line, 0);
-				}
-				// Hay que cerrar todos los pipes que no se vayan a usar
-				for (int j = 1; j < nPipes; ++j){
-					close(pipes_matrix[j][0]);
-					close(pipes_matrix[j][1]);
-				}
-				// Cerramos stdin del pipe que vamos a usar
-				close(pipes_matrix[0][0]);
-				dup2(pipes_matrix[0][1],STDOUT_FILENO);
-				close(pipes_matrix[0][1]);
-
-			}
-			else if(i == nPipes){ // Último comando
-					for (int k = 0; k < nPipes - 1; k++) {
-					close(pipes_matrix[k][0]);
-					close(pipes_matrix[k][1]);
-				}
-				close(pipes_matrix[i - 1][1]); // Cerrar entrada de pipe anterior
-				dup2(pipes_matrix[i - 1][0],STDIN_FILENO); //Asignar salida del pipe anterior
-				close(pipes_matrix[i - 1][0]); // Cerrar otro extremo del pipe
-				//Redirección de salida
-				if (line->redirect_output != NULL){
-					change_redirections(line,1);
-				}
-				else if(line->redirect_error != NULL){
-					change_redirections(line,2);
-				}
-			} 
-			else { //Comando intermedio
-				for (int p = 0; p < nPipes; ++p){
-					if ((p != i) && (p != (i-1))){
-						close(pipes_matrix[p][0]);
-						close(pipes_matrix[p][1]);
-					}
-				}
-				close(pipes_matrix[i - 1][1]);
-				close(pipes_matrix[i][0]);
-				dup2(pipes_matrix[i-1][0],STDIN_FILENO); // Pillar salida del pipe anterior
-				close(pipes_matrix[i-1][0]); // Cerrar extremo del pipe
-				dup2(pipes_matrix[i][1],STDOUT_FILENO); // Mandar mi salida por salida del pipe
-				close(pipes_matrix[i][1]); // Cerrar extremo del pipe 
-			}
-
-			execStatus = execvp(line->commands[i].filename, line->commands[i].argv);
-			if(execStatus < 0){
-				fprintf(stderr, "La has liado");
-				return ERROR;
-			}
-		}
-	}
-
-	// Código solo alcanzado por el padre
-	for (int w = 0; w < nPipes; ++w){
-		close(pipes_matrix[w][0]);
-		close(pipes_matrix[w][1]);
-	}
-
-	for (int i = 0; i < line->ncommands; ++i)	{
-		wait(&status);
-	}
-
-	matrixFree(pipes_matrix, nPipes);
-	return WEXITSTATUS(status);
 }
 
 int check_command(char *filename){
@@ -374,9 +257,6 @@ void print_promt(int exit_code){
 	printf(" ");
 
 }
-
-
-
 void change_redirections(tline *line, int casito){
 	int file;
 	switch (casito){
@@ -396,16 +276,8 @@ void change_redirections(tline *line, int casito){
 			dup2(file, STDERR_FILENO);
 			break;
 		}
-
 }
 
-void matrixFree(int **matrix, int n) {
-	int i;
-	for(i = 0; i < n; i++) {
-		free(matrix[i]);
-	}
-	free(matrix);
-}
 
 
 
