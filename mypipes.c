@@ -4,7 +4,6 @@ int executePipes(int **matrix, tline *line){
 	int nPipes = line->ncommands - 1;
 	pid_t pid;
 	int statusPipe = 0;
-	int dupStatus = 0;
 	int execStatus = 0;
 	int status = 0;
 	matrix = (int **) malloc(nPipes * sizeof(int *));
@@ -74,7 +73,8 @@ int crearPipe(int **matrix, int statusPipe, int nPipes){
 			matrixFree(matrix, nPipes);
 			return -1;
 		}
-	}
+   	}
+   	return 0;
 }
 
 int firstPipe(int **matrix, tline* line, int nPipes){
