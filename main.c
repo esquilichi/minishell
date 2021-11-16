@@ -40,6 +40,22 @@
 #define EXIT "exit"
 #define JOBSCONST "jobs"
 #define G_USAGE "globalusage"
+#define MAX_BGProcesses 20
+
+/* 
+ _________
+< Structs >
+ ---------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+*/
+typedef struct job {
+	pid_t pid;
+	char comando[1024];
+} job;
 
 /*
  ____________________
@@ -57,6 +73,8 @@ int jobs_buffer[32][32];
 int num_commands = 0;
 uid_t uid;
 int **pipes_matrix;
+job jobs_array[MAX_BGProcesses];
+int last_job = -1;
 /*
  __________________________
 < Definición de funciones >
@@ -97,6 +115,7 @@ int main(int argc, char const *argv[]){
 		signal(SIGINT,  SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
 		signal(SIGQUIT, SIG_IGN);
 		signal(SIGTSTP, SIG_IGN);
+		signal(SIGCHLD, SIG_IGN);
 
 		line = tokenize(buffer);
 		if (line == NULL){
@@ -124,6 +143,8 @@ int main(int argc, char const *argv[]){
 						signal(SIGINT,  SIG_DFL);
 						signal(SIGKILL, SIG_DFL);
 						signal(SIGTSTP, SIG_DFL);
+						signal(SIGCHLD, SIG_DFL);
+
 						if (line->redirect_output != NULL)
 							change_redirections(line, 1);
 						if (line->redirect_input != NULL)
@@ -147,18 +168,27 @@ int main(int argc, char const *argv[]){
 						exit(1);
 					break;
 
-					default:
-						wait(&exit_status);
-						if(WIFEXITED(exit_status) != 0){
-							//printf("DEBUG status: %d\n",exit_status);
-							if (WEXITSTATUS(exit_status) != 0){
-								fprintf(stdout,"El comando ha tenido un código de estado erróneo\n");
-							}
-						}
-						signal(SIGINT,  SIG_IGN); //Ignorar señales en Padre
-						signal(SIGQUIT, SIG_IGN);
-						signal(SIGTSTP, SIG_IGN);
-					break;
+					default: // Padre
+						if (line->background){
+							last_job++;
+							jobs_array[last_job].pid = pid;
+							strcpy(jobs_array[last_job].comando, line->commands[0].argv[0]);
+							fprintf(stdout,"[%d] %d\n",last_job, pid);
+							break;
+						}else {
+							wait(&exit_status);
+								if(WIFEXITED(exit_status) != 0){
+								//printf("DEBUG status: %d\n",exit_status);
+									if (WEXITSTATUS(exit_status) != 0){
+										fprintf(stdout,"El comando ha tenido un código de estado erróneo\n");
+									}
+								}
+							signal(SIGINT,  SIG_IGN); //Ignorar señales en Padre
+							signal(SIGQUIT, SIG_IGN);
+							signal(SIGTSTP, SIG_IGN);
+							//signal(SIGCHLD, SIG_IGN);
+						break;
+					}
 				}
 			}
 		}else if (line->ncommands >= 2){ //executePipes
