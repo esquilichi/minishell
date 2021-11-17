@@ -61,7 +61,7 @@ int executePipes(int **matrix, tline *line, int *last_job, job array[]){
             waitpid(pid, &execStatus, 0);
         }
     } else{
-        *last_job++;
+        (*last_job)++;
         array[*last_job].pid = pid;
         strcpy(array[*last_job].comando, line->commands[0].argv[0]);
         array[*last_job].line = line;
