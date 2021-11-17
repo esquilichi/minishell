@@ -140,7 +140,7 @@ int main(int argc, char const *argv[]) {
                         signal(SIGINT, SIG_DFL);
                         signal(SIGKILL, SIG_DFL);
                         signal(SIGTSTP, SIG_DFL);
-                        //signal(SIGCHLD, SIG_DFL);
+                        //signal(SIGCHLD, SIG_DFL); Implementar nuestro handler para cuando muere un hijo
 
                         if (line->redirect_output != NULL)
                             change_redirections(line, 1);
@@ -166,7 +166,6 @@ int main(int argc, char const *argv[]) {
                         break;
 
                     default: // Padre
-                        printf("%d\n", line->background);
                         if (line->background) {
                             last_job++;
                             jobs_array[last_job].pid = pid;
@@ -174,11 +173,8 @@ int main(int argc, char const *argv[]) {
                             fprintf(stdout, "[%d] %d\n", last_job, pid);
                             break;
                         } else {
-                            printf("DEBUG pid: %d\n", pid);
                             waitpid(pid, &exit_status, 0);
-                            printf("DEBUG after wait: %d\n", exit_status);
                             if (WIFEXITED(exit_status) != 0) {
-                                //printf("DEBUG status: %d\n",exit_status);
                                 if (WEXITSTATUS(exit_status) != 0) {
                                     fprintf(stdout, "El comando ha tenido un código de estado erróneo\n");
                                 }
@@ -186,7 +182,6 @@ int main(int argc, char const *argv[]) {
                             signal(SIGINT, SIG_IGN); //Ignorar señales en Padre
                             signal(SIGQUIT, SIG_IGN);
                             signal(SIGTSTP, SIG_IGN);
-                            //signal(SIGCHLD, SIG_IGN);
                             break;
                         }
                 }
@@ -230,7 +225,6 @@ void my_cd(tline *line) {
         }
     } else {
         dir = line->commands[0].argv[1];
-        //printf("DEBUG: %s\n",dir);
     }
 
     dir_status = chdir(dir);
