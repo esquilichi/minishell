@@ -55,6 +55,7 @@
 typedef struct job {
     pid_t pid;
     char comando[1024];
+    tline *line;
 } job;
 
 /*
@@ -89,10 +90,13 @@ int check_command(const char *filename);
 
 void my_cd(tline *line);
 
+void my_jobs();
+
 void make_prompt();
 
 void print_promt(int exit_code);
-// void change_redirections(tline *line, int casito);
+
+void childHandler(int signal);
 
 /*
  _________
@@ -116,7 +120,7 @@ int main(int argc, char const *argv[]) {
         signal(SIGINT, SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
         signal(SIGQUIT, SIG_IGN);
         signal(SIGTSTP, SIG_IGN);
-
+        signal(SIGCHLD, childHandler);
         line = tokenize(buffer);
         if (line == NULL) {
             continue;
@@ -128,7 +132,7 @@ int main(int argc, char const *argv[]) {
             } else if (strcmp(line->commands[0].argv[0], EXIT) == 0) { // Salimos de la shell
                 exit(0);
             } else if (strcmp(line->commands[0].argv[0], JOBSCONST) == 0) { // JOBS con fg y bg
-
+                my_jobs();
             } else if (strcmp(line->commands[0].argv[0], G_USAGE) == 0) { // Futuro Global Usage
 
             } else {
@@ -156,20 +160,20 @@ int main(int argc, char const *argv[]) {
                         } else {
                             //printf("Mi pid es == %d\n",pid);
                             fprintf(stderr, "No se encuentra el comando %s\n", line->commands[0].argv[0]);
-                            exit(1);
+                            exit(-1);
                         }
                         break;
 
                     case ERROR:
                         fprintf(stderr, "Falló el fork");
                         exit(1);
-                        break;
 
                     default: // Padre
                         if (line->background) {
                             last_job++;
                             jobs_array[last_job].pid = pid;
                             strcpy(jobs_array[last_job].comando, line->commands[0].argv[0]);
+                            jobs_array[last_job].line = line;
                             fprintf(stdout, "[%d] %d\n", last_job, pid);
                             break;
                         } else {
@@ -265,8 +269,38 @@ void print_promt(int exit_code) {
 
 }
 
+void childHandler(int signal) {
+    /* Hemos recibido la muerte de un hijo :'-( */
+    pid_t temp;
+    while ((temp = waitpid((pid_t) -1, NULL, WNOHANG)) > 0) {
+        for (int i = 0; i <= last_job; ++i) {
+            if (jobs_array[i].pid == temp) {
+                printf("\n[%d] %d (%s) acabado\n", i, temp, jobs_array[i].comando);
+                // Reordenar array
+                for (int j = i; j <= last_job; ++j) {
+                    jobs_array[j] = jobs_array[j + 1];
+                }
+                last_job--;
+            }
+        }
+    }
+}
 
 
+void my_jobs() {
+    char *command = (char *) malloc(1024 * sizeof(char));
+    for (int i = 0; i <= last_job; ++i) {
+        /*
+        if (jobs_array[i].line->ncommands >= 2){ // Tenemos pipes
+            for (int j = 0; j < jobs_array[i].line->ncommands; ++j) {
+                strlcat(command, jobs_array[i].line->commands->argv[i], sizeof(command));
+                strlcat(command, " ", sizeof(command));
+            }
+        } */
+        printf("[%d] + Running %s PID: %d\n", i, jobs_array[i].comando, jobs_array[i].pid);
+    }
+    free(command);
+}
 
 
 
