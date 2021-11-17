@@ -40,23 +40,8 @@
 #define EXIT "exit"
 #define JOBSCONST "jobs"
 #define G_USAGE "globalusage"
+#define JOBS "jobs"
 #define MAX_BGProcesses 20
-
-/* 
- _________
-< Structs >
- ---------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-*/
-typedef struct job {
-    pid_t pid;
-    char comando[1024];
-    tline *line;
-} job;
 
 /*
  ____________________
@@ -158,7 +143,6 @@ int main(int argc, char const *argv[]) {
                             execvp(command, line->commands[0].argv);
                             fprintf(stderr, "No se ha podido ejecutar el comando %s\n", command);
                         } else {
-                            //printf("Mi pid es == %d\n",pid);
                             fprintf(stderr, "No se encuentra el comando %s\n", line->commands[0].argv[0]);
                             exit(-1);
                         }
@@ -190,8 +174,9 @@ int main(int argc, char const *argv[]) {
                         }
                 }
             }
-        } else if (line->ncommands >= 2) { //executePipes
-            executePipes(pipes_matrix, line);
+        } else if (line->ncommands >= 2) {//executePipes
+            signal(SIGCHLD, childHandler);
+            executePipes(pipes_matrix, line, &last_job, jobs_array);
         }
         print_promt(exit_status);
     }

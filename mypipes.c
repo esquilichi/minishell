@@ -1,6 +1,6 @@
 #include "mypipes.h"
 
-int executePipes(int **matrix, tline *line){
+int executePipes(int **matrix, tline *line, int *last_job, job array[]){
 	int nPipes = line->ncommands - 1;
 	pid_t pid;
 	int statusPipe = 0;
@@ -50,16 +50,25 @@ int executePipes(int **matrix, tline *line){
 			}
 		}
 	}
+    // Código solo alcanzado por el padre
+    if (!line->background){
+        for (int w = 0; w < nPipes; ++w){
+            close(matrix[w][0]);
+            close(matrix[w][1]);
+        }
 
-	// Código solo alcanzado por el padre
-	for (int w = 0; w < nPipes; ++w){
-		close(matrix[w][0]);
-		close(matrix[w][1]);
-	}
+        for (int i = 0; i < line->ncommands; ++i)	{
+            waitpid(pid, &execStatus, 0);
+        }
+    } else{
+        *last_job++;
+        array[*last_job].pid = pid;
+        strcpy(array[*last_job].comando, line->commands[0].argv[0]);
+        array[*last_job].line = line;
+        fprintf(stdout, "[%d] %d\n", *last_job, pid);
+        return 0;
+    }
 
-	for (int i = 0; i < line->ncommands; ++i)	{
-		wait(&status);
-	}
 
 	matrixFree(matrix, nPipes);
 	return WEXITSTATUS(status);
@@ -154,3 +163,4 @@ void change_redirections(tline *line, int casito){
 			break;
 		}
 }
+
