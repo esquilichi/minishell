@@ -130,7 +130,11 @@ int main(int argc, char const *argv[]) {
                         signal(SIGKILL, SIG_DFL);
                         signal(SIGTSTP, SIG_DFL);
                         //signal(SIGCHLD, SIG_DFL); Implementar nuestro handler para cuando muere un hijo
-
+                        if (line->background) {
+                            //Redirigir stdin, solución chapucera pero a que mola?
+                            int input_fds = open("/dev/null", O_RDONLY);
+                            dup2(input_fds, STDIN_FILENO);
+                        }
                         if (line->redirect_output != NULL)
                             change_redirections(line, 1);
                         if (line->redirect_input != NULL)
@@ -139,6 +143,7 @@ int main(int argc, char const *argv[]) {
                             change_redirections(line, 2);
                         char *command = line->commands[0].filename; // Path absoluto
                         //printf("%s\n", command); Debug Filename
+
                         if (check_command(command)) {
                             execvp(command, line->commands[0].argv);
                             fprintf(stderr, "No se ha podido ejecutar el comando %s\n", command);
