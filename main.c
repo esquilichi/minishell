@@ -130,7 +130,11 @@ int main(int argc, char const *argv[]) {
                         signal(SIGKILL, SIG_DFL);
                         signal(SIGTSTP, SIG_DFL);
                         //signal(SIGCHLD, SIG_DFL); Implementar nuestro handler para cuando muere un hijo
-
+                        if (line->background) {
+                            //Redirigir stdin, solución chapucera pero a que mola?
+                            int input_fds = open("/dev/null", O_RDONLY);
+                            dup2(input_fds, STDIN_FILENO);
+                        }
                         if (line->redirect_output != NULL)
                             change_redirections(line, 1);
                         if (line->redirect_input != NULL)
