@@ -203,34 +203,58 @@ int main(int argc, char const *argv[]) {
 }
 
 void my_fg(tline *line) {
+
+    pid_t pid_n;
+    pid_n=fork();
     int pid_1;
-    if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
+    
+    switch (pid_n) {
+        case 0:
+            waitpid(pid_n, NULL, 0);
+            signal(SIGINT, SIG_IGN); //Ignorar señales en Padre
+            signal(SIGQUIT, SIG_IGN);
+            signal(SIGTSTP, SIG_IGN);
+            break;
+
+        case ERROR:
+            fprintf(stderr, "Falló el fork");
+            exit(1);
+
+        default:
+            if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
+                    for (int i = 0; i < MAX_JOBS; ++i) {
+                        if(jobs_array[i].eliminado == False){
+                            pid_1 = jobs_array[i].pid; // Última posición del array en la que tenemos un job
+                        }
+                    }
+                    waitpid(pid_1, NULL, 0);
+            }else  if (line->commands[0].argc > 1) {
+                int cont=0;
                 for (int i = 0; i < MAX_JOBS; ++i) {
-                    if(jobs_array[i].eliminado == False){
-                        pid_1 = jobs_array[i].pid; // Última posición del array en la que tenemos un job
+                    char *token;
+                    char delim[] = " ";
+                    token = strtok(jobs_array[i].comando, delim);
+                    if (jobs_array[i].eliminado == False){
+                        if(strcmp(token, line->commands[0].argv[1]) == 0){
+                            cont++;
+                            pid_1=jobs_array[i].pid;
+                        }
                     }
                 }
-                waitpid(pid_1, NULL, 0);
-    }else  if (line->commands[0].argc > 1) {
-        int cont=0;
-        for (int i = 0; i < MAX_JOBS; ++i) {
-            if(strcmp(strtok(jobs_array[i].comando, " "), line->commands[0].argv[0])==True){
-                cont++;
-                pid_1=jobs_array[i].pid;
+                switch (cont) {
+                    case 0:
+                        printf("No se encuentra el comando en background");
+                        break;
+                    case 1:
+                        waitpid(pid_1, NULL, 0);
+                        break;
+                    default:
+                        printf("Especificación de trabajo ambigua");
+                        break;
+                }
             }
-        }
-        switch (cont) {
-            case 0:
-                printf("No se encuentra el comando en background");
-                break;
-            case 1:
-                waitpid(pid_1, NULL, 0);
-                break;
-            default:
-                printf("Especificación de trabajo ambigua");
-                break;
-        }
-    }
+            break;
+    }    
 }
 
 int check_command(const char *filename) {
