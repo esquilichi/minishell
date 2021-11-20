@@ -203,7 +203,34 @@ int main(int argc, char const *argv[]) {
 }
 
 void my_fg(tline *line) {
-
+    int pid_1;
+    if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
+                for (int i = 0; i < MAX_JOBS; ++i) {
+                    if(jobs_array[i].eliminado == False){
+                        pid_1 = jobs_array[i].pid; // Última posición del array en la que tenemos un job
+                    }
+                }
+                waitpid(pid_1, NULL, 0);
+    }else  if (line->commands[0].argc > 1) {
+        int cont=0;
+        for (int i = 0; i < MAX_JOBS; ++i) {
+            if(strcmp(strtok(jobs_array[i].comando, " "), line->commands[0].argv[0])==True){
+                cont++;
+                pid_1=jobs_array[i].pid;
+            }
+        }
+        switch (cont) {
+            case 0:
+                printf("No se encuentra el comando en background");
+                break;
+            case 1:
+                waitpid(pid_1, NULL, 0);
+                break;
+            default:
+                printf("Especificación de trabajo ambigua");
+                break;
+        }
+    }
 }
 
 int check_command(const char *filename) {
@@ -227,6 +254,7 @@ void my_cd(tline *line) {
     int dir_status = ERROR;
     if (line->commands[0].argc > 2) {
         fprintf(stderr, "Más de dos argumentos\n");
+        return;
     }
 
     if (line->commands[0].argc == 1) { // Solo me pasan cd, sin args

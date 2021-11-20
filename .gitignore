@@ -1,6 +1,7 @@
 main
 cmake-build-debug/*
 .idea/*
+
 # Lecture files
 *.txt
 
@@ -41,6 +42,7 @@ cmake-build-debug/*
 *.i*86
 *.x86_64
 *.hex
+*.sh
 
 # Debug files
 *.dSYM/
