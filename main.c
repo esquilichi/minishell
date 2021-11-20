@@ -204,30 +204,31 @@ int main(int argc, char const *argv[]) {
 
 void my_fg(tline *line) {
 
+    signal(SIGCHLD, childHandler);
     pid_t pid_n;
-    pid_n=fork();
-    int pid_1;
+    pid_n = fork();
+    int pid_1 = ERROR;
     
     switch (pid_n) {
-        case 0:
-            waitpid(pid_n, NULL, 0);
-            signal(SIGINT, SIG_IGN); //Ignorar señales en Padre
-            signal(SIGQUIT, SIG_IGN);
-            signal(SIGTSTP, SIG_IGN);
-            break;
-
         case ERROR:
             fprintf(stderr, "Falló el fork");
             exit(1);
 
-        default:
+        case 0:
             if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
                     for (int i = 0; i < MAX_JOBS; ++i) {
                         if(jobs_array[i].eliminado == False){
                             pid_1 = jobs_array[i].pid; // Última posición del array en la que tenemos un job
                         }
                     }
-                    waitpid(pid_1, NULL, 0);
+                    if (pid_1 != ERROR){
+                        signal(SIGINT, SIG_DFL);
+                        signal(SIGSTOP, SIG_DFL);
+                        printf("%d\n",pid_1);
+                        waitpid(pid_1, NULL, 0);
+                    }else{
+                        exit(0);
+                    }
             }else  if (line->commands[0].argc > 1) {
                 int cont=0;
                 for (int i = 0; i < MAX_JOBS; ++i) {
@@ -237,22 +238,31 @@ void my_fg(tline *line) {
                     if (jobs_array[i].eliminado == False){
                         if(strcmp(token, line->commands[0].argv[1]) == 0){
                             cont++;
-                            pid_1=jobs_array[i].pid;
+                            pid_1 = jobs_array[i].pid;
                         }
                     }
                 }
                 switch (cont) {
                     case 0:
                         printf("No se encuentra el comando en background");
-                        break;
+                        return;
                     case 1:
-                        waitpid(pid_1, NULL, 0);
-                        break;
+                        signal(SIGINT, SIG_DFL);
+                        signal(SIGSTOP, SIG_DFL);
+                        waitpid((pid_t)-1, NULL, 0);
+                        return;
                     default:
                         printf("Especificación de trabajo ambigua");
-                        break;
+                        return;
                 }
             }
+            break;
+        default:
+            waitpid((pid_t)-1, NULL, 0);
+            printf("DEBUG1: he llegado aquí");
+            signal(SIGINT, SIG_IGN); //Ignorar señales en Padre
+            signal(SIGQUIT, SIG_IGN);
+            signal(SIGTSTP, SIG_IGN);
             break;
     }    
 }
