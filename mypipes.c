@@ -1,6 +1,6 @@
 #include "mypipes.h"
 
-int executePipes(int **matrix, tline *line, int *last_job, job array[]){
+int executePipes(int **matrix, tline *line,job array[], char* buffer){
 	int nPipes = line->ncommands - 1;
 	pid_t pid;
 	int statusPipe = 0;
@@ -61,12 +61,17 @@ int executePipes(int **matrix, tline *line, int *last_job, job array[]){
             waitpid(pid, &execStatus, 0);
         }
     } else{
-        (*last_job)++;
-        array[*last_job].pid = pid;
-        strcpy(array[*last_job].comando, line->commands[0].argv[0]);
-        array[*last_job].line = line;
-        fprintf(stdout, "[%d] %d\n", *last_job, pid);
-        return 0;
+        int counter = -1;
+        for (int i = 0; i < MAX_JOBS; ++i) {
+            if(array[i].eliminado == 0){
+                counter = i; // Última posición del array en la que tenemos un job
+            }
+        }
+        array[counter + 1].pid = pid;
+        buffer[strcspn(buffer, "\n")] = 0;
+        strcpy(array[counter + 1].comando, buffer);
+        array[counter + 1].eliminado = 0;
+        fprintf(stdout, "[%d] %d\n", counter + 1, pid);
     }
 
 
@@ -161,6 +166,9 @@ void change_redirections(tline *line, int casito){
 			file = open(line->redirect_error, O_RDWR | O_CREAT, 0664);
 			dup2(file, STDERR_FILENO);
 			break;
+        default:
+            fprintf(stderr,"¿Que ha pasado aquí?");
 		}
+
 }
 

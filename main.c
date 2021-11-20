@@ -38,10 +38,9 @@
 #define ERROR -1
 #define CDCONST "cd"
 #define EXIT "exit"
-#define JOBSCONST "jobs"
-#define G_USAGE "globalusage"
 #define JOBS "jobs"
-#define MAX_BGProcesses 20
+#define G_USAGE "globalusage"
+#define FG "fg"
 
 /*
  ____________________
@@ -57,9 +56,7 @@ char *user;
 char hostname[64];
 uid_t uid;
 int **pipes_matrix;
-job jobs_array[MAX_BGProcesses];
-int last_job = -1;
-
+job jobs_array[MAX_JOBS];
 /*
  __________________________
 < Definición de funciones >
@@ -83,6 +80,8 @@ void print_promt(int exit_code);
 
 void childHandler(int signal);
 
+void my_fg(tline *line);
+
 /*
  _________
 < Código >
@@ -95,17 +94,21 @@ void childHandler(int signal);
 */
 
 int main(int argc, char const *argv[]) {
+
+    for (int i = 0; i < MAX_JOBS; ++i){
+        jobs_array[i].eliminado = True;
+    }
+
     make_prompt();
     tline *line; // Struct de parser.h
-    char *buffer = (char *) malloc(1024 * (sizeof(char))); // Memoria dinamica porque why not
+    char *buffer = (char *) malloc(1024 * (sizeof(char))); // Memoria dinámica porque why not
     print_promt(0);
     int exit_status = 0; //Se usa para comprobar salida de estado del hijo
-    int foreground_pid = 0;
     while (fgets(buffer, 1024, stdin)) {
         signal(SIGINT, SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
         signal(SIGQUIT, SIG_IGN);
         signal(SIGTSTP, SIG_IGN);
-        signal(SIGCHLD, childHandler);
+        signal(SIGCHLD, childHandler); // Si un hijo muere, tenemos que limpiar su estado en el array de jobs e imprimir
         line = tokenize(buffer);
         if (line == NULL) {
             continue;
@@ -116,9 +119,12 @@ int main(int argc, char const *argv[]) {
                 my_cd(line); // Aquí no hacemos hijo o no cambiamos de dir
             } else if (strcmp(line->commands[0].argv[0], EXIT) == 0) { // Salimos de la shell
                 exit(0);
-            } else if (strcmp(line->commands[0].argv[0], JOBSCONST) == 0) { // JOBS con fg y bg
+            } else if (strcmp(line->commands[0].argv[0], JOBS) == 0) { // JOBS con fg y bg
                 my_jobs();
-            } else if (strcmp(line->commands[0].argv[0], G_USAGE) == 0) { // Futuro Global Usage
+            } else if (strcmp(line->commands[0].argv[0], FG) == 0){
+                my_fg(line);
+            }
+            else if (strcmp(line->commands[0].argv[0], G_USAGE) == 0) { // Futuro Global Usage
 
             } else {
                 //Creamos el hijo para ejecutar el comando
@@ -131,7 +137,9 @@ int main(int argc, char const *argv[]) {
                         signal(SIGTSTP, SIG_DFL);
                         //signal(SIGCHLD, SIG_DFL); Implementar nuestro handler para cuando muere un hijo
                         if (line->background) {
-                            //Redirigir stdin, solución chapucera pero a que mola?
+                            signal(SIGINT, SIG_IGN);
+                            signal(SIGTSTP, SIG_IGN);
+                            //¿Redirigir stdin, solución chapucera, pero a que mola?
                             int input_fds = open("/dev/null", O_RDONLY);
                             dup2(input_fds, STDIN_FILENO);
                         }
@@ -158,11 +166,17 @@ int main(int argc, char const *argv[]) {
 
                     default: // Padre
                         if (line->background) {
-                            last_job++;
-                            jobs_array[last_job].pid = pid;
-                            strcpy(jobs_array[last_job].comando, line->commands[0].argv[0]);
-                            jobs_array[last_job].line = line;
-                            fprintf(stdout, "[%d] %d\n", last_job, pid);
+                            int counter = -1;
+                            for (int i = 0; i < MAX_JOBS; ++i) {
+                                if(jobs_array[i].eliminado == False){
+                                    counter = i; // Última posición del array en la que tenemos un job
+                                }
+                            }
+                            jobs_array[counter + 1].pid = pid;
+                            buffer[strcspn(buffer, "\n")] = 0;
+                            strcpy(jobs_array[counter + 1].comando, buffer);
+                            jobs_array[counter + 1].eliminado = False;
+                            fprintf(stdout, "[%d] %d\n", counter + 1, pid);
                             break;
                         } else {
                             waitpid(pid, &exit_status, 0);
@@ -180,12 +194,16 @@ int main(int argc, char const *argv[]) {
             }
         } else if (line->ncommands >= 2) {//executePipes
             signal(SIGCHLD, childHandler);
-            executePipes(pipes_matrix, line, &last_job, jobs_array);
+            executePipes(pipes_matrix, line, jobs_array, buffer);
         }
         print_promt(exit_status);
     }
     free(buffer);
     return 0;
+}
+
+void my_fg(tline *line) {
+
 }
 
 int check_command(const char *filename) {
@@ -262,14 +280,10 @@ void childHandler(int signal) {
     /* Hemos recibido la muerte de un hijo :'-( */
     pid_t temp;
     while ((temp = waitpid((pid_t) -1, NULL, WNOHANG)) > 0) {
-        for (int i = 0; i <= last_job; ++i) {
+        for (int i = 0; i < MAX_JOBS; i++) {
             if (jobs_array[i].pid == temp) {
+                jobs_array[i].eliminado = True;
                 printf("\n[%d] %d (%s) acabado\n", i, temp, jobs_array[i].comando);
-                // Reordenar array
-                for (int j = i; j <= last_job; ++j) {
-                    jobs_array[j] = jobs_array[j + 1];
-                }
-                last_job--;
             }
         }
     }
@@ -278,15 +292,11 @@ void childHandler(int signal) {
 
 void my_jobs() {
     char *command = (char *) malloc(1024 * sizeof(char));
-    for (int i = 0; i <= last_job; ++i) {
-        /*
-        if (jobs_array[i].line->ncommands >= 2){ // Tenemos pipes
-            for (int j = 0; j < jobs_array[i].line->ncommands; ++j) {
-                strlcat(command, jobs_array[i].line->commands->argv[i], sizeof(command));
-                strlcat(command, " ", sizeof(command));
-            }
-        } */
-        printf("[%d] + Running %s PID: %d\n", i, jobs_array[i].comando, jobs_array[i].pid);
+    int index = -1;
+    for (int i = 0; i < MAX_JOBS; ++i) {
+        if (jobs_array[i].eliminado == False) {
+            printf("[%d] + Running (%s) PID: %d\n", ++index, jobs_array[i].comando, jobs_array[i].pid);
+        }
     }
     free(command);
 }

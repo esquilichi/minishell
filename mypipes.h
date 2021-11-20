@@ -7,13 +7,14 @@
 #include "parser.h"
 
 
+#define MAX_JOBS 256
 typedef struct job {
     pid_t pid;
-    char comando[1024];
-    tline *line;
+    char comando[MAX_JOBS];
+    int eliminado;
 } job;
 
-int executePipes(int **matrix, tline *line, int *last_job, job array[]);
+int executePipes(int **matrix, tline *line, job array[], char *buffer);
 int firstPipe(int **matrix, tline* line, int nPipes);
 int lastPipe(int **matrix, tline* line, int nPipes);
 int mediumPipe(int **matrix, tline* line, int nPipes, int i);
