@@ -57,6 +57,7 @@ char hostname[64];
 uid_t uid;
 int **pipes_matrix;
 job jobs_array[MAX_JOBS];
+int pid_to_kill;
 /*
  __________________________
 < Definición de funciones >
@@ -79,6 +80,8 @@ void make_prompt();
 void print_promt(int exit_code);
 
 void childHandler(int signal);
+
+void controlChandler(int signal);
 
 void my_fg(tline *line);
 
@@ -215,6 +218,7 @@ void my_fg(tline *line) {
             exit(1);
 
         case 0:
+            signal(SIGINT, SIG_DFL);
             if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
                     for (int i = 0; i < MAX_JOBS; ++i) {
                         if(jobs_array[i].eliminado == False){
@@ -222,10 +226,10 @@ void my_fg(tline *line) {
                         }
                     }
                     if (pid_1 != ERROR){
-                        signal(SIGINT, SIG_DFL);
-                        signal(SIGSTOP, SIG_DFL);
-                        printf("%d\n",pid_1);
+                        pid_to_kill = pid_1;
+                        printf("DEBUG pid_to_kill -> %d\n", pid_to_kill);
                         waitpid(pid_1, NULL, 0);
+                        exit(0);
                     }else{
                         exit(0);
                     }
@@ -245,24 +249,23 @@ void my_fg(tline *line) {
                 switch (cont) {
                     case 0:
                         printf("No se encuentra el comando en background");
-                        return;
+                        exit(0);
                     case 1:
-                        signal(SIGINT, SIG_DFL);
-                        signal(SIGSTOP, SIG_DFL);
+                        pid_to_kill = pid_1;
                         waitpid((pid_t)-1, NULL, 0);
-                        return;
+                        exit(0);
                     default:
                         printf("Especificación de trabajo ambigua");
-                        return;
+                        exit(0);
                 }
             }
-            break;
+            exit(0);
         default:
-            waitpid((pid_t)-1, NULL, 0);
-            printf("DEBUG1: he llegado aquí");
-            signal(SIGINT, SIG_IGN); //Ignorar señales en Padre
+            signal(SIGINT, controlChandler); //Ignorar señales en Padre
             signal(SIGQUIT, SIG_IGN);
             signal(SIGTSTP, SIG_IGN);
+            waitpid((pid_t)-1, NULL, 0);
+            //printf("DEBUG1: he llegado aquí\n");
             break;
     }    
 }
@@ -361,6 +364,11 @@ void my_jobs() {
         }
     }
     free(command);
+}
+
+void controlChandler(int signal){
+    printf("LLEGAMOS, PID: %d\n",pid_to_kill);
+    kill(pid_to_kill, SIGKILL);
 }
 
 
