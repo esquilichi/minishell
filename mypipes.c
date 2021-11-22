@@ -25,7 +25,8 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 		}
 		pid = fork();
 		if(pid == 0){ // Hijo
-            setpgid(0,0);
+            if (i == 0)
+                setpgid(0,0);
 			// Ejecutar comando y pasar output al input del pipe
 			signal(SIGINT,  SIG_DFL);
 			signal(SIGKILL, SIG_DFL);

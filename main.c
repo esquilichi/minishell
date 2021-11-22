@@ -224,17 +224,27 @@ void my_fg(tline *line) {
         fprintf(stderr, "Bag fg usage\n");
         return;
     } else {
+        int i;
         int job = atoi(line->commands[0].argv[0]);
-        if (jobs_array[job].eliminado == True){
+        for (i = 0; i < MAX_JOBS; ++i) {
+            if (jobs_array[i].eliminado == False){
+                break;
+            }
+        }
+        job = job + i;
+        if (job == MAX_JOBS){
             fprintf(stderr, "No existe un job con ese ID\n");
             return;
-        } else {
+        } else if (jobs_array[job].eliminado == True){
+            fprintf(stderr, "No existe un job con ese ID\n");
+            return;
+        }
+        else {
             ultimo = job;
         }
     }
     pid_to_kill = ultimo;
     signal(SIGINT, controlChandler);
-    printf("%d\n",pid_to_kill);
     waitpid(jobs_array[pid_to_kill].pid, NULL, 0);
 }
 
