@@ -220,6 +220,17 @@ void my_fg(tline *line) {
                 ultimo = i;
             }
         }
+    } else if (line->commands[0].argc > 2){
+        fprintf(stderr, "Bag fg usage\n");
+        return;
+    } else {
+        int job = atoi(line->commands[0].argv[0]);
+        if (jobs_array[job].eliminado == True){
+            fprintf(stderr, "No existe un job con ese ID\n");
+            return;
+        } else {
+            ultimo = job;
+        }
     }
     pid_to_kill = ultimo;
     signal(SIGINT, controlChandler);
@@ -324,8 +335,7 @@ void my_jobs() {
 }
 
 void controlChandler(int signal){
-    pid_t pid = jobs_array[pid_to_kill].pid;
-    kill(jobs_array[pid_to_kill].pid, SIGINT);
+    killpg(jobs_array[pid_to_kill].pgid, SIGINT);
 }
 
 
