@@ -12,6 +12,7 @@ typedef struct job {
     pid_t pid;
     char comando[MAX_JOBS];
     int eliminado;
+    pid_t pgid;
 } job;
 
 int executePipes(int **matrix, tline *line, job array[], char *buffer);

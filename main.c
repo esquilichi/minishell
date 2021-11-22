@@ -57,7 +57,7 @@ char hostname[64];
 uid_t uid;
 int **pipes_matrix;
 job jobs_array[MAX_JOBS];
-int pid_to_kill;
+volatile pid_t pid_to_kill;
 /*
  __________________________
 < Definición de funciones >
@@ -85,6 +85,7 @@ void controlChandler(int signal);
 
 void my_fg(tline *line);
 
+pid_t returnPidToKill();
 /*
  _________
 < Código >
@@ -97,7 +98,6 @@ void my_fg(tline *line);
 */
 
 int main(int argc, char const *argv[]) {
-
     for (int i = 0; i < MAX_JOBS; ++i){
         jobs_array[i].eliminado = True;
     }
@@ -121,6 +121,11 @@ int main(int argc, char const *argv[]) {
             if (strcmp(line->commands[0].argv[0], CDCONST) == 0) { // Miramos si el comando que queremos es cd
                 my_cd(line); // Aquí no hacemos hijo o no cambiamos de dir
             } else if (strcmp(line->commands[0].argv[0], EXIT) == 0) { // Salimos de la shell
+                for (int i = 0; i < MAX_JOBS; ++i) {
+                    if (jobs_array[i].eliminado == False){
+                        kill(jobs_array[i].pid, SIGTERM);
+                    }
+                }
                 exit(0);
             } else if (strcmp(line->commands[0].argv[0], JOBS) == 0) { // JOBS con fg y bg
                 my_jobs();
@@ -135,13 +140,12 @@ int main(int argc, char const *argv[]) {
                 pid = fork();
                 switch (pid) {
                     case 0:
+                        setpgid(0,0);
                         signal(SIGINT, SIG_DFL);
                         signal(SIGKILL, SIG_DFL);
                         signal(SIGTSTP, SIG_DFL);
                         //signal(SIGCHLD, SIG_DFL); Implementar nuestro handler para cuando muere un hijo
                         if (line->background) {
-                            signal(SIGINT, SIG_IGN);
-                            signal(SIGTSTP, SIG_IGN);
                             //¿Redirigir stdin, solución chapucera, pero a que mola?
                             int input_fds = open("/dev/null", O_RDONLY);
                             dup2(input_fds, STDIN_FILENO);
@@ -176,6 +180,7 @@ int main(int argc, char const *argv[]) {
                                 }
                             }
                             jobs_array[counter + 1].pid = pid;
+                            jobs_array[counter + 1].pgid = pid;
                             buffer[strcspn(buffer, "\n")] = 0;
                             strcpy(jobs_array[counter + 1].comando, buffer);
                             jobs_array[counter + 1].eliminado = False;
@@ -207,67 +212,19 @@ int main(int argc, char const *argv[]) {
 
 void my_fg(tline *line) {
 
+    int ultimo = -1;
     signal(SIGCHLD, childHandler);
-    pid_t pid_n;
-    pid_n = fork();
-    int pid_1 = ERROR;
-    
-    switch (pid_n) {
-        case ERROR:
-            fprintf(stderr, "Falló el fork");
-            exit(1);
-
-        case 0:
-            signal(SIGINT, SIG_DFL);
-            if(line->commands[0].argc == 1) { // Solo me pasan fg, sin args
-                    for (int i = 0; i < MAX_JOBS; ++i) {
-                        if(jobs_array[i].eliminado == False){
-                            pid_1 = jobs_array[i].pid; // Última posición del array en la que tenemos un job
-                        }
-                    }
-                    if (pid_1 != ERROR){
-                        pid_to_kill = pid_1;
-                        printf("DEBUG pid_to_kill -> %d\n", pid_to_kill);
-                        waitpid(pid_1, NULL, 0);
-                        exit(0);
-                    }else{
-                        exit(0);
-                    }
-            }else  if (line->commands[0].argc > 1) {
-                int cont=0;
-                for (int i = 0; i < MAX_JOBS; ++i) {
-                    char *token;
-                    char delim[] = " ";
-                    token = strtok(jobs_array[i].comando, delim);
-                    if (jobs_array[i].eliminado == False){
-                        if(strcmp(token, line->commands[0].argv[1]) == 0){
-                            cont++;
-                            pid_1 = jobs_array[i].pid;
-                        }
-                    }
-                }
-                switch (cont) {
-                    case 0:
-                        printf("No se encuentra el comando en background");
-                        exit(0);
-                    case 1:
-                        pid_to_kill = pid_1;
-                        waitpid((pid_t)-1, NULL, 0);
-                        exit(0);
-                    default:
-                        printf("Especificación de trabajo ambigua");
-                        exit(0);
-                }
+    if (line->commands[0].argc == 1){
+        for (int i = 0; i < MAX_JOBS; ++i) {
+            if (jobs_array[i].eliminado == False){
+                ultimo = i;
             }
-            exit(0);
-        default:
-            signal(SIGINT, controlChandler); //Ignorar señales en Padre
-            signal(SIGQUIT, SIG_IGN);
-            signal(SIGTSTP, SIG_IGN);
-            waitpid((pid_t)-1, NULL, 0);
-            //printf("DEBUG1: he llegado aquí\n");
-            break;
-    }    
+        }
+    }
+    pid_to_kill = ultimo;
+    signal(SIGINT, controlChandler);
+    printf("%d\n",pid_to_kill);
+    waitpid(jobs_array[pid_to_kill].pid, NULL, 0);
 }
 
 int check_command(const char *filename) {
@@ -367,8 +324,8 @@ void my_jobs() {
 }
 
 void controlChandler(int signal){
-    printf("LLEGAMOS, PID: %d\n",pid_to_kill);
-    kill(pid_to_kill, SIGKILL);
+    pid_t pid = jobs_array[pid_to_kill].pid;
+    kill(jobs_array[pid_to_kill].pid, SIGINT);
 }
 
 
