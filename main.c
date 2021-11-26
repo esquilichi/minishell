@@ -104,7 +104,11 @@ int main(int argc, char const *argv[]) {
     for (int i = 0; i < MAX_JOBS; ++i){
         jobs_array[i].eliminado = True;
     }
-
+    signal(SIGINT, SIG_IGN); //Hay que ignorar Ctrl+C y Ctrl+Z en la shell
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGCHLD, childHandler); // Si un hijo muere, tenemos que limpiar su estado en el array de jobs e imprimir
+        
     make_prompt();
     tline *line; // Struct de parser.h
     char *buffer = (char *) malloc(1024 * (sizeof(char))); // Memoria dinámica porque why not
@@ -149,6 +153,7 @@ int main(int argc, char const *argv[]) {
                         signal(SIGTSTP, SIG_DFL);
 
                         if (line->background) {
+                            setpgid(0, 0);
                             //¿Redirigir stdin, solución chapucera, pero a que mola?
                             int input_fds = open("/dev/null", O_RDONLY);
                             dup2(input_fds, STDIN_FILENO);

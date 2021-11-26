@@ -1,4 +1,8 @@
 #include "mypipes.h"
+#include <unistd.h>
+
+pid_t pidG;
+pid_t pidH;
 
 int executePipes(int **matrix, tline *line,job array[], char* buffer){
 	int nPipes = line->ncommands - 1;
@@ -15,7 +19,7 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 
 	/* Crear pipes para los n comandos a ejecutar */
 	crearPipe(matrix, statusPipe, nPipes);
-
+	pid_t pid1; 
 	for (int i = 0; i < line->ncommands; ++i){
 		/* printf("%s\n",line->commands[i].filename); */
 		if (line->commands[i].filename == NULL){ // Comando no válido
@@ -24,9 +28,20 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 			return -1;
 		}
 		pid = fork();
+		if(pid>0 && i ==0)//El padre sabe el pid
+			//pidG=pid;
+			pid1=pid;
+
 		if(pid == 0){ // Hijo
-            if (i == 0)
-                setpgid(0,0);
+			if(line->background){
+				if (i == 0){//Primer hijo
+					setpgid(0,0);
+				}else{
+					setpgid(0, pid1);
+				}
+			}
+            
+
 			// Ejecutar comando y pasar output al input del pipe
 			signal(SIGINT,  SIG_DFL);
 			signal(SIGKILL, SIG_DFL);
@@ -39,6 +54,7 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 				firstPipe(matrix, line, nPipes);
 			}
 			else if(i == nPipes){ // Último comando
+
 				lastPipe(matrix , line, nPipes);
 			} 
 			else { //Comando intermedio
@@ -51,6 +67,12 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 				return -1;
 			}
 		}
+		/* if(!line-> background){
+			for (int i = 0; i < line->ncommands; ++i)	{// Esperamos a q se ejecuten los comandos en orden
+				waitpid(pid, &execStatus, 0);
+			}
+		} */
+		
 	}
     // Código solo alcanzado por el padre
     if (!line->background){
@@ -70,7 +92,8 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
             }
         }
         array[counter + 1].pid = pid;
-        array[counter + 1].pgid = pid;
+        //array[counter + 1].pgid = pid;
+		array[counter + 1].pgid = pid1;
         buffer[strcspn(buffer, "\n")] = 0;
         strcpy(array[counter + 1].comando, buffer);
         array[counter + 1].eliminado = 0;
