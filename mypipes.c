@@ -1,9 +1,6 @@
 #include "mypipes.h"
 #include <unistd.h>
 
-pid_t pidG;
-pid_t pidH;
-
 int executePipes(int **matrix, tline *line,job array[], char* buffer){
 	int nPipes = line->ncommands - 1;
 	pid_t pid;
@@ -58,7 +55,7 @@ int executePipes(int **matrix, tline *line,job array[], char* buffer){
 				lastPipe(matrix , line, nPipes);
 			} 
 			else { //Comando intermedio
-				mediumPipe(matrix, line, nPipes, i);
+				mediumPipe(matrix, nPipes, i);
 			}
 
 			execStatus = execvp(line->commands[i].filename, line->commands[i].argv);
@@ -150,7 +147,7 @@ int lastPipe(int **matrix, tline* line, int nPipes){
 	}
 	return 0;
 }
-int mediumPipe(int **matrix, tline* line, int nPipes, int i){
+int mediumPipe(int **matrix, int nPipes, int i){
 	for (int p = 0; p < nPipes; ++p){
 		if ((p != i) && (p != (i-1))){
 			close(matrix[p][0]);

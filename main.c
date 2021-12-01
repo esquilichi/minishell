@@ -58,7 +58,7 @@ uid_t uid;
 int **pipes_matrix;
 job jobs_array[MAX_JOBS];
 volatile pid_t pid_to_kill;
-pid_t normal_pid_to_kill;
+
 /*
  __________________________
 < Definición de funciones >
@@ -86,9 +86,6 @@ void controlChandler(int signal);
 
 void my_fg(tline *line);
 
-void controlCsinjob(int signal);
-
-pid_t returnPidToKill();
 /*
  _________
 < Código >
@@ -147,7 +144,6 @@ int main(int argc, char const *argv[]) {
                 pid = fork();
                 switch (pid) {
                     case 0:
-                        normal_pid_to_kill = pid;
                         signal(SIGINT, SIG_DFL);
                         signal(SIGKILL, SIG_DFL);
                         signal(SIGTSTP, SIG_DFL);
@@ -356,9 +352,6 @@ void controlChandler(int signal){
     killpg(jobs_array[pid_to_kill].pgid, SIGINT);
 }
 
-void controlCsinjob(int signal){
-    printf("%d\n", normal_pid_to_kill);
-    killpg(normal_pid_to_kill, SIGINT);
-}
+
 
 

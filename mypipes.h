@@ -19,7 +19,7 @@ typedef struct job {
 int executePipes(int **matrix, tline *line, job array[], char *buffer);
 int firstPipe(int **matrix, tline* line, int nPipes);
 int lastPipe(int **matrix, tline* line, int nPipes);
-int mediumPipe(int **matrix, tline* line, int nPipes, int i);
+int mediumPipe(int **matrix, int nPipes, int i);
 int crearPipe(int **matrix, int statusPipe, int nPipes);
 void matrixFree(int **matrix, int n);
 void change_redirections(tline *line, int casito);
