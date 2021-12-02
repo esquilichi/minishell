@@ -229,7 +229,7 @@ void my_fg(tline *line) {
         return;
     } else {
         int i;
-        int job = atoi(line->commands[0].argv[0]);
+        int job = atoi(line->commands[0].argv[1]);
         for (i = 0; i < MAX_JOBS; ++i) {
             if (jobs_array[i].eliminado == False){
                 break;
